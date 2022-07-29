@@ -1,7 +1,7 @@
 module Pages.New exposing (Model, Msg, page)
 
 import Browser.Events
-import Data.Types exposing (Column, ColumnType(..), Index(..), Sheet, Widget(..), signupModelColumns, widgetSignupPrism)
+import Data.Types exposing (Column, ColumnType(..), Index(..), Sheet, Widget(..), sheetWidgetRowsLens, signupModelColumns, widgetRowsRow, widgetSignupPrism)
 import Gen.Params.New exposing (Params)
 import Gen.Route as Route
 import Html
@@ -16,6 +16,7 @@ import Monocle.Optional
 import Page
 import Request
 import Shared
+import Svg.Attributes exposing (r)
 import Utils
 import View exposing (View)
 import Views.Helpers
@@ -73,6 +74,7 @@ type Msg
     | RemoveSignupColumn Index
     | SignupColumnTextChanged Index String
     | SignupColumnTypeChanged Index ColumnType
+    | AddWidget
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -177,6 +179,26 @@ update msg model =
               }
             , Cmd.none
             )
+
+        AddWidget ->
+            case model.workingWidget of
+                Just ( idx, ww ) ->
+                    let
+                        widgetOptional =
+                            Monocle.Compose.lensWithOptional (widgetRowsRow idx) sheetWidgetRowsLens
+                    in
+                    ( { model
+                        | sheet =
+                            model.sheet
+                                |> Monocle.Optional.modify
+                                    widgetOptional
+                                    (\r -> r ++ [ ww ])
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
 
 
@@ -414,7 +436,7 @@ view model =
                                 , "hover:text-white"
                                 , "transition-colors"
                                 ]
-                            , onClick StopEditingWidget
+                            , onClick AddWidget
                             ]
                             [ Html.text "Ok" ]
                         ]

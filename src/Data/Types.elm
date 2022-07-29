@@ -1,6 +1,9 @@
 module Data.Types exposing (..)
 
+import List.Extra
+import Monocle.Common
 import Monocle.Lens exposing (Lens)
+import Monocle.Optional exposing (Optional)
 import Monocle.Prism exposing (Prism)
 
 
@@ -126,6 +129,21 @@ type alias Sheet =
     , slug : String
     , widgetRows : List (List Widget)
     }
+
+
+sheetWidgetRowsLens : Lens Sheet (List (List Widget))
+sheetWidgetRowsLens =
+    Lens .widgetRows (\r sheet -> { sheet | widgetRows = r })
+
+
+widgetRowsRow : Index -> Optional (List (List Widget)) (List Widget)
+widgetRowsRow (Index idx) =
+    Monocle.Common.list idx
+
+
+widgetRowWidget : Index -> Optional (List Widget) Widget
+widgetRowWidget (Index idx) =
+    Monocle.Common.list idx
 
 
 type WidgetMode

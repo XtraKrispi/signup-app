@@ -1,6 +1,6 @@
 module Views.Signup exposing (..)
 
-import Data.Types exposing (Column, ColumnType(..), Index(..), SignupModel, WidgetMode(..), columnName, columnType)
+import Data.Types exposing (ChoiceType(..), Column, ColumnType(..), Index(..), SignupModel, WidgetMode(..), columnName, columnType)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events exposing (onClick, onInput)
@@ -48,17 +48,183 @@ setColumnTypeChangeMsg msg cfg =
     { cfg | columnTypeChangeMsg = Just msg }
 
 
-columnTypeView : ColumnType -> Html msg
-columnTypeView ct =
+columnTypeEditView : Maybe (ColumnType -> msg) -> ColumnType -> Html msg
+columnTypeEditView onChange ct =
     case ct of
         SignupColumnText ->
-            Html.div [] [ Html.text "SignupColumnText" ]
+            Html.div [] []
 
         SignupColumnRange s e ->
-            Html.div [] [ Html.text "SignupColumnRange" ]
+            Html.div
+                [ Utils.classes
+                    [ "flex"
+                    , "flex-col"
+                    , "space-y-2"
+                    ]
+                ]
+                [ Html.div
+                    [ Utils.classes
+                        []
+                    ]
+                    [ Html.label
+                        [ Utils.classes
+                            [ "block"
+                            , "mb-2"
+                            , "text-sm"
+                            , "font-medium"
+                            , "text-gray-900"
+                            ]
+                        ]
+                        [ Html.text ("From: " ++ String.fromInt s) ]
+                    , Html.input
+                        (Maybe.Extra.values
+                            [ Just <|
+                                Utils.classes
+                                    [ "w-full"
+                                    , "h-2"
+                                    , "bg-gray-200"
+                                    , "rounded-lg"
+                                    , "appearance-none"
+                                    , "cursor-pointer"
+                                    ]
+                            , Just <| Html.Attributes.placeholder "Min"
+                            , Just <| Html.Attributes.value (String.fromInt s)
+                            , Just <| Html.Attributes.type_ "range"
+                            , Just <| Html.Attributes.min "0"
+                            , Just <| Html.Attributes.max "100"
+                            , Maybe.map
+                                (\fn ->
+                                    onInput
+                                        (\str ->
+                                            fn
+                                                (SignupColumnRange
+                                                    (str
+                                                        |> String.toInt
+                                                        |> Maybe.withDefault s
+                                                    )
+                                                    e
+                                                )
+                                        )
+                                )
+                                onChange
+                            ]
+                        )
+                        []
+                    ]
+                , Html.div
+                    [ Utils.classes
+                        []
+                    ]
+                    [ Html.label
+                        [ Utils.classes
+                            [ "block"
+                            , "mb-2"
+                            , "text-sm"
+                            , "font-medium"
+                            , "text-gray-900"
+                            ]
+                        ]
+                        [ Html.text ("To: " ++ String.fromInt e) ]
+                    , Html.input
+                        (Maybe.Extra.values
+                            [ Just <|
+                                Utils.classes
+                                    [ "w-full"
+                                    , "h-2"
+                                    , "bg-gray-200"
+                                    , "rounded-lg"
+                                    , "appearance-none"
+                                    , "cursor-pointer"
+                                    ]
+                            , Just <| Html.Attributes.placeholder "Max"
+                            , Just <| Html.Attributes.value (String.fromInt e)
+                            , Just <| Html.Attributes.type_ "range"
+                            , Just <| Html.Attributes.min "0"
+                            , Just <| Html.Attributes.max "100"
+                            , Maybe.map
+                                (\fn ->
+                                    onInput
+                                        (\str ->
+                                            fn
+                                                (SignupColumnRange
+                                                    s
+                                                    (str
+                                                        |> String.toInt
+                                                        |> Maybe.withDefault e
+                                                    )
+                                                )
+                                        )
+                                )
+                                onChange
+                            ]
+                        )
+                        []
+                    ]
+                ]
 
-        SignupColumnNumber n ->
-            Html.div [] [ Html.text "SignupColumnNumber" ]
+        SignupColumnNumber ->
+            Html.div [] []
+
+        SignupColumnChoice choiceType choices ->
+            Html.div
+                [ Utils.classes
+                    [ "flex"
+                    , "flex-col"
+                    , "space-y-2"
+                    ]
+                ]
+                (List.concat
+                    [ []
+                    , choices
+                        |> List.indexedMap
+                            (\i c ->
+                                Html.div []
+                                    [ Html.input
+                                        (Maybe.Extra.values
+                                            [ Just <| Html.Attributes.value c
+                                            , Just <|
+                                                Utils.classes
+                                                    textStyles
+                                            , onChange
+                                                |> Maybe.map
+                                                    (\fn ->
+                                                        onInput
+                                                            (\s ->
+                                                                choices
+                                                                    |> List.indexedMap
+                                                                        (\i_ c_ ->
+                                                                            if i == i_ then
+                                                                                s
+
+                                                                            else
+                                                                                c_
+                                                                        )
+                                                                    |> SignupColumnChoice choiceType
+                                                                    |> fn
+                                                            )
+                                                    )
+                                            ]
+                                        )
+                                        []
+                                    ]
+                            )
+                    , [ Html.button
+                            (Maybe.Extra.values
+                                [ Maybe.map
+                                    (\fn ->
+                                        onClick
+                                            ((choices ++ [ "" ])
+                                                |> SignupColumnChoice choiceType
+                                                |> fn
+                                            )
+                                    )
+                                    onChange
+                                ]
+                            )
+                            [ Html.text "+ Option" ]
+                      ]
+                    ]
+                )
 
 
 columnTypeToString : ColumnType -> String
@@ -70,8 +236,11 @@ columnTypeToString ct =
         SignupColumnRange _ _ ->
             "signupcolumnrange"
 
-        SignupColumnNumber _ ->
+        SignupColumnNumber ->
             "signupcolumnnumber"
+
+        SignupColumnChoice _ _ ->
+            "signupcolumnchoice"
 
 
 stringToColumnType : String -> ColumnType
@@ -84,7 +253,10 @@ stringToColumnType s =
             SignupColumnRange 1 10
 
         "signupcolumnnumber" ->
-            SignupColumnNumber 1
+            SignupColumnNumber
+
+        "signupcolumnchoice" ->
+            SignupColumnChoice Single []
 
         _ ->
             SignupColumnText
@@ -94,7 +266,8 @@ columnTypes : List ( String, ColumnType )
 columnTypes =
     [ ( "Text Entry", SignupColumnText )
     , ( "Range", SignupColumnRange 1 10 )
-    , ( "Number", SignupColumnNumber 1 )
+    , ( "Number", SignupColumnNumber )
+    , ( "Choice", SignupColumnChoice Single [] )
     ]
 
 
@@ -107,11 +280,29 @@ columnTypeMatch c1 c2 =
         ( SignupColumnRange _ _, SignupColumnRange _ _ ) ->
             True
 
-        ( SignupColumnNumber _, SignupColumnNumber _ ) ->
+        ( SignupColumnNumber, SignupColumnNumber ) ->
+            True
+
+        ( SignupColumnChoice _ _, SignupColumnChoice _ _ ) ->
             True
 
         _ ->
             False
+
+
+textStyles =
+    [ "bg-gray-50"
+    , "border"
+    , "border-gray-300"
+    , "text-gray-900"
+    , "text-sm"
+    , "rounded-lg"
+    , "focus:ring-blue-500"
+    , "focus:border-blue-500"
+    , "block"
+    , "w-full"
+    , "p-2.5"
+    ]
 
 
 columnView :
@@ -124,32 +315,72 @@ columnView { mode, removeColumnMsg, columnTextChangedMsg, columnTypeChangeMsg } 
         [ case mode of
             Editing ->
                 Html.div [ Utils.classes [ "relative", "group" ] ]
-                    [ Html.div [ Utils.classes [ "flex", "flex-col" ] ]
-                        [ Html.input
-                            (Maybe.Extra.values
-                                [ Just (Html.Attributes.type_ "text")
-                                , Just (Html.Attributes.value columnName)
-                                , Just
-                                    (Utils.classes
-                                        [ "border"
-                                        , "px-2"
-                                        , "py-1"
-                                        , "rounded-md"
+                    [ Html.div
+                        [ Utils.classes
+                            [ "flex"
+                            , "flex-col"
+                            , "space-y-2"
+                            ]
+                        ]
+                        [ Html.div [ Utils.classes [ "flex" ] ]
+                            [ Html.input
+                                (Maybe.Extra.values
+                                    [ Just (Html.Attributes.type_ "text")
+                                    , Just (Html.Attributes.value columnName)
+                                    , Just
+                                        (Utils.classes
+                                            textStyles
+                                        )
+                                    , Just
+                                        (Html.Attributes.placeholder
+                                            ("Column " ++ String.fromInt (idx + 1))
+                                        )
+                                    , Maybe.map (\fn -> onInput (fn (Index idx)))
+                                        columnTextChangedMsg
+                                    ]
+                                )
+                                []
+                            , Html.button
+                                (Maybe.Extra.values
+                                    [ Just
+                                        (Utils.classes
+                                            []
+                                        )
+                                    , Maybe.map (\fn -> onClick (fn (Index idx)))
+                                        removeColumnMsg
+                                    ]
+                                )
+                                [ Html.i
+                                    [ Utils.classes
+                                        [ "text-red-300"
+                                        , "hover:text-red-600"
+                                        , "transition-colors"
                                         ]
-                                    )
-                                , Just
-                                    (Html.Attributes.placeholder
-                                        ("Column " ++ String.fromInt (idx + 1))
-                                    )
-                                , Maybe.map (\fn -> onInput (fn (Index idx)))
-                                    columnTextChangedMsg
+                                    ]
+                                    [ Icons.trash ]
                                 ]
-                            )
-                            []
-                        , Html.div [ Utils.classes [ "w-full" ] ]
+                            ]
+                        , Html.div [ Utils.classes [ "w-full", "flex", "flex-col", "space-y-2" ] ]
                             [ Html.select
                                 (Maybe.Extra.values
-                                    [ Just (Utils.classes [ "w-full" ])
+                                    [ Just
+                                        (Utils.classes
+                                            [ "block"
+                                            , "py-2.5"
+                                            , "px-0"
+                                            , "w-full"
+                                            , "text-sm"
+                                            , "text-gray-500"
+                                            , "bg-transparent"
+                                            , "border-0"
+                                            , "border-b-2"
+                                            , "border-gray-200"
+                                            , "focus:outline-none"
+                                            , "focus:ring-0"
+                                            , "focus:border-gray-200"
+                                            , "peer"
+                                            ]
+                                        )
                                     , columnTypeChangeMsg
                                         |> Maybe.map
                                             (\fn ->
@@ -160,30 +391,8 @@ columnView { mode, removeColumnMsg, columnTextChangedMsg, columnTypeChangeMsg } 
                                 (columnTypes
                                     |> List.map (\( t, v ) -> Html.option [ Html.Attributes.selected (columnTypeMatch columnType v), Html.Attributes.value (columnTypeToString v) ] [ Html.text t ])
                                 )
-                            , columnTypeView columnType
+                            , columnTypeEditView (Maybe.map (\fn -> fn (Index idx)) columnTypeChangeMsg) columnType
                             ]
-                        ]
-                    , Html.button
-                        (Maybe.Extra.values
-                            [ Just
-                                (Utils.classes
-                                    [ "absolute"
-                                    , "right-0"
-                                    , "top-[12%]"
-                                    ]
-                                )
-                            , Maybe.map (\fn -> onClick (fn (Index idx)))
-                                removeColumnMsg
-                            ]
-                        )
-                        [ Html.i
-                            [ Utils.classes
-                                [ "text-red-300"
-                                , "hover:text-red-600"
-                                , "transition-colors"
-                                ]
-                            ]
-                            [ Icons.trash ]
                         ]
                     ]
 

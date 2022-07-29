@@ -1,7 +1,7 @@
 module Data.Codec exposing (..)
 
 import Codec exposing (Codec)
-import Data.Types exposing (Answer, AnswerType(..), Column, ColumnType(..), Sheet, SignupModel, SurveyModel, UpvoteModel, UpvoteOption, Widget(..))
+import Data.Types exposing (Answer, AnswerType(..), ChoiceType(..), Column, ColumnType(..), Sheet, SignupModel, SurveyModel, UpvoteModel, UpvoteOption, Widget(..))
 
 
 sheetCodec : Codec Sheet
@@ -48,10 +48,26 @@ columnCodec =
         |> Codec.buildObject
 
 
+choiceTypeCodec : Codec ChoiceType
+choiceTypeCodec =
+    Codec.custom
+        (\single multiple value ->
+            case value of
+                Single ->
+                    single
+
+                Multiple ->
+                    multiple
+        )
+        |> Codec.variant0 "Single" Single
+        |> Codec.variant0 "Multiple" Multiple
+        |> Codec.buildCustom
+
+
 columnTypeCodec : Codec ColumnType
 columnTypeCodec =
     Codec.custom
-        (\text range number value ->
+        (\text range number choice value ->
             case value of
                 SignupColumnText ->
                     text
@@ -59,12 +75,16 @@ columnTypeCodec =
                 SignupColumnRange min max ->
                     range min max
 
-                SignupColumnNumber n ->
-                    number n
+                SignupColumnNumber ->
+                    number
+
+                SignupColumnChoice choiceType choices ->
+                    choice choiceType choices
         )
         |> Codec.variant0 "SignupColumnText" SignupColumnText
         |> Codec.variant2 "SignupColumnRange" SignupColumnRange Codec.int Codec.int
-        |> Codec.variant1 "SignupColumnNumber" SignupColumnNumber Codec.int
+        |> Codec.variant0 "SignupColumnNumber" SignupColumnNumber
+        |> Codec.variant2 "SignupColumnChoice" SignupColumnChoice choiceTypeCodec (Codec.list Codec.string)
         |> Codec.buildCustom
 
 

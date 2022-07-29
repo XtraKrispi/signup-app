@@ -265,7 +265,13 @@ view model =
                     , "space-y-4"
                     ]
                 ]
-                [ Html.div []
+                [ Html.div
+                    [ Utils.classes
+                        [ "flex"
+                        , "flex-col"
+                        , "space-y-2"
+                        ]
+                    ]
                     (model.sheet.widgetRows
                         |> List.indexedMap viewWidgetRow
                     )

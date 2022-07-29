@@ -8,10 +8,16 @@ type Index
     = Index Int
 
 
+type ChoiceType
+    = Single
+    | Multiple
+
+
 type ColumnType
     = SignupColumnText
     | SignupColumnRange Int Int
-    | SignupColumnNumber Int
+    | SignupColumnNumber
+    | SignupColumnChoice ChoiceType (List String)
 
 
 type alias Column =
